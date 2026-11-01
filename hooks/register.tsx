@@ -13,41 +13,44 @@ const RED = ['#FF7A70', '#E5484D']
 const HIGH_USED = 85
 
 const WINDOWS = [
-  { kind: 'five_hour', name: 'Session', span: '5 h' },
-  { kind: 'seven_day', name: 'Weekly', span: '7 days' },
+  { kind: 'five_hour', name: 'Session' },
+  { kind: 'seven_day', name: 'Weekly' },
 ]
 
 const snapshot = atom({ plugin: 'quota-gauge', key: 'snapshot' } as const, null)
-// Bumped every minute so the reset countdowns redraw while the session is idle.
+// Bumped every minute so a window that just reset redraws while the session is idle.
 const now = atom({ plugin: 'quota-gauge', key: 'now' } as const, 0)
 
-type Reading = { name: string; span: string; used: number; resets: string }
+type Reading = { name: string; used: number; resets: string }
 
 function readings(snap: Snapshot, at: number): Reading[] {
-  return WINDOWS.flatMap(({ kind, name, span }) => {
+  return WINDOWS.flatMap(({ kind, name }) => {
     const limit = snap.rateLimits.find(l => l.kind === kind)
     if (!limit) return []
     const resetAt = limit.resetsAt ? Date.parse(limit.resetsAt) : NaN
     // A window whose reset time has passed starts over at zero.
-    if (resetAt <= at) return [{ name, span, used: 0, resets: 'Just reset' }]
+    if (resetAt <= at) return [{ name, used: 0, resets: '' }]
     const used = Math.min(100, Math.round(limit.percentUsed))
-    return [{ name, span, used, resets: Number.isNaN(resetAt) ? '' : `Resets in ${countdown(resetAt - at)}` }]
+    return [{ name, used, resets: Number.isNaN(resetAt) ? '' : resetDate(resetAt, at) }]
   })
 }
 
-function countdown(ms: number): string {
-  const minutes = Math.max(1, Math.round(ms / 60_000))
-  const days = Math.floor(minutes / 1440)
-  const hours = Math.floor((minutes % 1440) / 60)
-  const mins = minutes % 60
-  if (days > 0) return hours > 0 ? `${days} d ${hours} h` : `${days} d`
-  if (hours > 0) return mins > 0 ? `${hours} h ${mins} min` : `${hours} h`
-  return `${mins} min`
+// "20:00" when the reset is today, else "7 Nov, 20:00", in the person's locale.
+function resetDate(resetAt: number, at: number): string {
+  const date = new Date(resetAt)
+  const isToday = date.toDateString() === new Date(at).toDateString()
+  const time: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+  try {
+    return new Intl.DateTimeFormat(undefined, isToday ? time : { ...time, day: 'numeric', month: 'short' }).format(date)
+  } catch {
+    const hm = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    return isToday ? hm : `${date.getDate()}/${date.getMonth() + 1} ${hm}`
+  }
 }
 
 function barSvg(used: number, w: number): string {
   const [from, to] = used >= HIGH_USED ? RED : ORANGE
-  const h = 6
+  const h = 5
   const fill = used > 0 ? Math.max(h, (used / 100) * w) : 0
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
@@ -71,6 +74,8 @@ async function tick($: EngineInterface) {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
+    // Clears the plain status line an earlier version of this plugin set.
+    $.ui.status(undefined)
     const usage = await $.session.usage()
     if (usage.rateLimits.length > 0) {
       await update($, snapshot, () => ({
@@ -117,7 +122,7 @@ export const register: Register = on => {
 
     if (rows.length === 0) {
       return (
-        <Box paddingX="sm" paddingY="xs">
+        <Box paddingX="sm">
           <Text dimColor size="caption">
             Session and weekly usage appear after Claude's first reply.
           </Text>
@@ -125,35 +130,32 @@ export const register: Register = on => {
       )
     }
 
-    // Side by side when there is room, stacked in a narrow panel.
-    const isRow = e.props.bodyColumns >= 70
-    const barCells = Math.max(10, Math.min(36, Math.floor(e.props.bodyColumns / (isRow ? 2 : 1)) - 6))
-    const barPx = isRow ? 200 : 260
+    const barPx = e.props.bodyColumns >= 90 ? 140 : 90
+    const barCells = Math.max(6, Math.min(20, Math.floor(e.props.bodyColumns / 2) - 26))
 
     return (
-      <Box flexDirection={isRow ? 'row' : 'column'} columnGap="xl" rowGap="sm" paddingX="sm" paddingY="xs">
+      <Box flexDirection="row" flexWrap="wrap" columnGap="xl" rowGap="xs" paddingX="sm">
         {rows.map(r => (
-          <Box key={r.name} flexDirection="column" gap="xs">
-            <Box flexDirection="row" justifyContent="space-between" alignItems="flex-end" columnGap="md">
-              <Text>
-                <Text weight="semibold">{r.name}</Text>
-                <Text dimColor size="caption">  {r.span}</Text>
-              </Text>
-              <Text color={r.used >= HIGH_USED ? 'error' : 'claude'} weight="semibold" tabular>
-                {r.used}%<Text dimColor size="caption" weight="regular"> used</Text>
-              </Text>
-            </Box>
+          <Box key={r.name} flexDirection="row" alignItems="center" columnGap="sm">
+            <Text dimColor size="caption">
+              {r.name}
+            </Text>
             {Svg ? (
-              <Svg source={barSvg(r.used, barPx)} alt={`${r.name}: ${r.used}% used`} width={barPx} height={6} />
+              <Svg source={barSvg(r.used, barPx)} alt={`${r.name}: ${r.used}%`} width={barPx} height={5} />
             ) : (
               <Text>
                 <Text color={r.used >= HIGH_USED ? 'error' : 'claude'}>{textBar(r.used, barCells)[0]}</Text>
                 <Text dimColor>{textBar(r.used, barCells)[1]}</Text>
               </Text>
             )}
-            <Text dimColor size="caption" tabular>
-              {r.resets}
+            <Text size="caption" tabular>
+              {r.used}%
             </Text>
+            {r.resets !== '' && (
+              <Text dimColor size="caption" tabular>
+                ↻ {r.resets}
+              </Text>
+            )}
           </Box>
         ))}
       </Box>

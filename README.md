@@ -3,18 +3,12 @@
 See how much of your Claude plan you've used, right in Claude Code, without typing `/usage`.
 
 ```
-Session  5 h                          39% used
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  (orange bar)
-Resets in 2 h 14 min
-
-Weekly  7 days                        19% used
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Resets in 3 d 5 h
+Session ━━━━━━━━──────── 44%  ↻ 20:00      Weekly ━━──────────── 7%  ↻ 7 Nov, 01:00
 ```
 
-- **Session**: your rolling 5-hour window, percent used and time until it resets
-- **Weekly**: your 7-day window, percent used and time until it resets
-- Bars are Claude orange and turn red past 85% used
+- **Session**: your rolling 5-hour window, percent used and when it resets
+- **Weekly**: your 7-day window, percent used and when it resets
+- Orange bars, turning red past 85% used
 
 Shown right above the prompt box, in the **Claude Code VS Code extension** and in the **terminal CLI**.
 
