@@ -1,17 +1,23 @@
 # Claude Quota Gauge
 
-See how much of your Claude plan you have left, right under the prompt box, without typing `/usage`.
+See how much of your Claude plan you've used, right in Claude Code, without typing `/usage`.
 
 ```
-5h ███░░░░░ 38% left · ↻ 2h14  │  7d ██████░░ 81% left · ↻ 3d05h  │  ctx 34%
+Session  5 h                          39% used
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  (orange bar)
+Resets in 2 h 14 min
+
+Weekly  7 days                        19% used
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Resets in 3 d 5 h
 ```
 
-- **5h**: your rolling 5-hour session window, percent left and time until it resets
-- **7d**: your weekly window, percent left and time until it resets
-- **ctx**: how full the current conversation's context window is
-- A ⚠ appears when a window drops to 10% or less
+- **Session**: your rolling 5-hour window, percent used and time until it resets
+- **Weekly**: your 7-day window, percent used and time until it resets
+- Bars are Claude orange and turn red past 85% used
+- Type `/usage-gauge` to bring the gauge back if you closed it
 
-Works in the **Claude Code VS Code extension** (under the input box) and in the **terminal CLI**.
+Works in the **Claude Code VS Code extension** and in the **terminal CLI**.
 
 ## Install
 
