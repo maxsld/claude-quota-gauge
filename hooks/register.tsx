@@ -16,7 +16,7 @@ const ORANGE = ['#F0A07E', '#D97757']
 const RED = ['#FF7A70', '#E5484D']
 
 const snapshot = atom({ plugin: 'quota-gauge', key: 'snapshot' } as const, null)
-// Bumped every minute so resets and the pace redraw while the session is idle.
+// Bumped every minute so a window that just reset redraws while the session is idle.
 const now = atom({ plugin: 'quota-gauge', key: 'now' } as const, 0)
 
 function barSvg(used: number, w: number, isHigh: boolean): string {
@@ -139,11 +139,6 @@ export const register: Register = (on, options) => {
             <Text size="caption" tabular>
               {r.used}%
             </Text>
-            {r.fullAt !== undefined && (
-              <Text color="warning" size="caption" tabular>
-                ⚠ full ~{formatTime(r.fullAt, at, settings.hour12)}
-              </Text>
-            )}
             {r.resetsAt !== undefined && (
               <Text dimColor size="caption" tabular>
                 ↻ {formatTime(r.resetsAt, at, settings.hour12)}

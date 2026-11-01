@@ -1,10 +1,18 @@
 {
   "name": "quota-gauge",
   "version": "1.0.0",
-  "description": "See your Claude plan usage at a glance: 5-hour session and weekly bars right above the prompt, with reset times, pace and alerts.",
-  "author": { "name": "Maxens Soldan" },
+  "description": "See your Claude plan usage at a glance: 5-hour session and weekly bars right above the prompt, with reset times and alerts.",
+  "author": {
+    "name": "Maxens Soldan"
+  },
   "license": "MIT",
-  "keywords": ["usage", "quota", "rate-limit", "status", "vscode"],
+  "keywords": [
+    "usage",
+    "quota",
+    "rate-limit",
+    "status",
+    "vscode"
+  ],
   "types": "./types/index.d.ts",
   "userConfig": {
     "show": {
@@ -12,7 +20,11 @@
       "title": "Bars to show",
       "description": "Which usage windows appear above the prompt.",
       "default": "Session and weekly",
-      "options": ["Session and weekly", "Session only", "Weekly only"]
+      "options": [
+        "Session and weekly",
+        "Session only",
+        "Weekly only"
+      ]
     },
     "warnAt": {
       "type": "number",
@@ -28,18 +40,16 @@
       "description": "Notify me when a window reaches the warning level, and again at 95%.",
       "default": true
     },
-    "pace": {
-      "type": "boolean",
-      "title": "Usage pace",
-      "description": "Show when you'd hit the limit at your current rate, if that comes before the reset.",
-      "default": true
-    },
     "timeFormat": {
       "type": "string",
       "title": "Time format",
       "description": "How reset and pace times are written.",
-      "default": "System",
-      "options": ["System", "24-hour", "12-hour"]
+      "default": "24-hour",
+      "options": [
+        "24-hour",
+        "12-hour",
+        "System"
+      ]
     }
   }
 }
