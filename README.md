@@ -6,7 +6,7 @@
 No more typing `/usage`, no more surprise "limit reached" in the middle of a task.
 
 [![Check](https://github.com/maxsld/claude-quota-gauge/actions/workflows/check.yml/badge.svg)](https://github.com/maxsld/claude-quota-gauge/actions/workflows/check.yml)
-![Version](https://img.shields.io/badge/version-1.1.0-D97757)
+![Version](https://img.shields.io/badge/version-1.2.0-D97757)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-2.1.314%2B-D97757)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 

@@ -126,7 +126,9 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey) return next(e)
+    // Another plugin's band is kept and drawn under the gauge.
+    const below = await next(e)
+    if (e.props.hasSurvey) return below
 
     const table = $.ui.resolve(e)
     const { Box, Text } = table
@@ -138,7 +140,7 @@ export const register: Register = (on, options) => {
     const barPx = e.props.bodyColumns >= 90 ? 140 : 90
     const barCells = Math.max(6, Math.min(20, Math.floor(e.props.bodyColumns / 2) - 30))
 
-    return (
+    const gauge = (
       <Box
         flexDirection="row"
         flexWrap="wrap"
@@ -179,6 +181,15 @@ export const register: Register = (on, options) => {
             </Box>
           )
         })}
+      </Box>
+    )
+
+    return below.type === 'engine' ? (
+      gauge
+    ) : (
+      <Box flexDirection="column">
+        {gauge}
+        {below}
       </Box>
     )
   })

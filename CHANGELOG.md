@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+
+- Plays well with other plugins' bands above the prompt: theirs is drawn under the gauge instead of being hidden
+
 ## 1.1.0
 
 - The bars show as soon as a session opens: usage is read from your account right away, no message needed

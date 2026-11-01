@@ -24,6 +24,7 @@ test('the band shows both windows as percent used, on every surface', async ($, 
   mock.clock(on, { now: AT })
   mock.store(on)
   on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('ui.render', () => ({ type: 'engine', ref: 0 }))
   on('session.usage', () => ({
     value: { startedAt: AT, context: { window: 200_000 }, rateLimits: LIMITS },
   }))
@@ -43,6 +44,7 @@ test('the bars show from the start, filled from the account usage', async ($, on
   const clock = mock.clock(on, { now: AT })
   mock.store(on)
   on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('ui.render', () => ({ type: 'engine', ref: 0 }))
   on('session.usage', () => ({ value: { startedAt: AT, context: { window: 200_000 }, rateLimits: [] } }))
   on('session.authorize', () => ({ value: { handle: 'h', kind: 'bearer' } }))
   on('http.fetch', () => ({
@@ -62,5 +64,21 @@ test('the bars show from the start, filled from the account usage', async ($, on
   await clock.settle()
   expect((await ui.find({ type: 'Text', text: /^31%$/ }))?.text).toBe('31%')
   expect((await ui.find({ type: 'Text', text: /^–%$/ }))?.text).toBe('–%')
+  await ui.unmount()
+})
+
+test("another plugin's band stays, drawn under the gauge", async ($, on) => {
+  mock.clock(on, { now: AT })
+  mock.store(on)
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.usage', () => ({
+    value: { startedAt: AT, context: { window: 200_000 }, rateLimits: LIMITS },
+  }))
+  on('ui.render', () => ({ type: 'Text', props: {}, children: ['main · 2 changes'] }))
+
+  await $.session.start({ cwd: '/', surface: 'vscode', isInteractive: true })
+  const ui = await $.ui.mount({ ...BAND, surface: 'vscode' })
+  expect((await ui.find({ type: 'Text', text: /^44%$/ }))?.text).toBe('44%')
+  expect((await ui.find({ type: 'Text', text: /2 changes/ }))?.text).toBe('main · 2 changes')
   await ui.unmount()
 })
