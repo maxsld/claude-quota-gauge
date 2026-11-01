@@ -67,7 +67,7 @@ test('the bars show from the start, filled from the account usage', async ($, on
   await ui.unmount()
 })
 
-test("another plugin's band stays, drawn under the gauge", async ($, on) => {
+test("another plugin's band stays, drawn beside the gauge", async ($, on) => {
   mock.clock(on, { now: AT })
   mock.store(on)
   on('session.start', (_, e) => ({ cwd: e.cwd }))

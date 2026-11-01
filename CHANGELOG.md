@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- Another plugin's band now sits beside the gauge, on the same line, instead of under it
+
 ## 1.2.0
 
 - Plays well with other plugins' bands above the prompt: theirs is drawn under the gauge instead of being hidden

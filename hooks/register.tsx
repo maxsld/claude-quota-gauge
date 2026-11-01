@@ -126,7 +126,7 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    // Another plugin's band is kept and drawn under the gauge.
+    // Another plugin's band is kept and drawn beside the gauge.
     const below = await next(e)
     if (e.props.hasSurvey) return below
 
@@ -187,7 +187,7 @@ export const register: Register = (on, options) => {
     return below.type === 'engine' ? (
       gauge
     ) : (
-      <Box flexDirection="column">
+      <Box flexDirection="row" flexWrap="wrap" alignItems="center">
         {gauge}
         {below}
       </Box>
