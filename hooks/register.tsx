@@ -3,8 +3,6 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { RateLimit, Snapshot } from '../types'
 
-const PANE = 'quota-gauge'
-const TITLE = 'Claude usage'
 const TICK_MS = 60_000
 // The last reading, kept across sessions so the gauge shows before the first reply.
 const STORE_KEY = 'lastRateLimits'
@@ -47,10 +45,9 @@ function countdown(ms: number): string {
   return `${mins} min`
 }
 
-function barSvg(used: number): string {
+function barSvg(used: number, w: number): string {
   const [from, to] = used >= HIGH_USED ? RED : ORANGE
-  const w = 320
-  const h = 8
+  const h = 6
   const fill = used > 0 ? Math.max(h, (used / 100) * w) : 0
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
@@ -66,26 +63,14 @@ function textBar(used: number, width: number): [string, string] {
   return ['━'.repeat(filled), '━'.repeat(width - filled)]
 }
 
-function statusLine(snap: Snapshot, at: number): string {
-  const parts = readings(snap, at).map(r => `${r.name} ${r.used}% used`)
-  return parts.length > 0 ? parts.join(' · ') : 'Usage: waiting for the first reply'
-}
-
-async function refresh($: EngineInterface) {
-  const snap = await read($, snapshot)
+async function tick($: EngineInterface) {
   const at = await $.clock.now()
   await update($, now, () => at)
-  const panes = await $.ui.panes()
-  const isShown = panes.some(p => p.id === PANE && p.isPlaced)
-  // The plain status line is only the fallback where the pane can't be drawn.
-  $.ui.status(snap && !isShown ? statusLine(snap, at) : undefined)
 }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
-    await $.command.register({ name: 'usage-gauge', description: 'Show the Claude usage gauge' })
-
     const usage = await $.session.usage()
     if (usage.rateLimits.length > 0) {
       await update($, snapshot, () => ({
@@ -98,18 +83,10 @@ export const register: Register = on => {
       await update($, snapshot, () => ({ rateLimits: saved ?? [], isStale: saved !== undefined }))
     }
 
-    await $.ui.open({ id: PANE, title: TITLE, rows: 9 })
-    await refresh($)
-    $.clock.every(TICK_MS, () => void refresh($))
+    await tick($)
+    $.clock.every(TICK_MS, () => void tick($))
 
     return result
-  })
-
-  on('command.run', { command: 'usage-gauge' }, async $ => {
-    const opened = await $.ui.open({ id: PANE, title: TITLE, rows: 9 })
-    await refresh($)
-
-    return { text: opened.isPlaced ? 'Usage gauge shown.' : 'Usage gauge: no room to draw it here.' }
   })
 
   on('session.measure', async ($, e, next) => {
@@ -123,12 +100,14 @@ export const register: Register = on => {
     } else {
       await update($, snapshot, snap => (snap ? { ...snap, contextPercent: e.context.percent } : snap))
     }
-    await refresh($)
+    await tick($)
 
     return next(e)
   })
 
-  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.props.hasSurvey) return next(e)
+
     const table = $.ui.resolve(e)
     const { Box, Text } = table
     const Svg = 'Svg' in table ? table.Svg : undefined
@@ -138,32 +117,34 @@ export const register: Register = on => {
 
     if (rows.length === 0) {
       return (
-        <Box flexDirection="column" gap="xs" padding="sm">
-          <Text weight="semibold">Usage</Text>
-          <Text dimColor size="footnote">
-            Your session and weekly limits appear after Claude's first reply.
+        <Box paddingX="sm" paddingY="xs">
+          <Text dimColor size="caption">
+            Session and weekly usage appear after Claude's first reply.
           </Text>
         </Box>
       )
     }
 
-    const barCells = Math.max(10, Math.min(36, e.props.bodyColumns - 24))
+    // Side by side when there is room, stacked in a narrow panel.
+    const isRow = e.props.bodyColumns >= 70
+    const barCells = Math.max(10, Math.min(36, Math.floor(e.props.bodyColumns / (isRow ? 2 : 1)) - 6))
+    const barPx = isRow ? 200 : 260
 
     return (
-      <Box flexDirection="column" gap="md" padding="sm">
+      <Box flexDirection={isRow ? 'row' : 'column'} columnGap="xl" rowGap="sm" paddingX="sm" paddingY="xs">
         {rows.map(r => (
           <Box key={r.name} flexDirection="column" gap="xs">
-            <Box flexDirection="row" justifyContent="space-between" alignItems="flex-end">
+            <Box flexDirection="row" justifyContent="space-between" alignItems="flex-end" columnGap="md">
               <Text>
                 <Text weight="semibold">{r.name}</Text>
-                <Text dimColor size="footnote">  {r.span}</Text>
+                <Text dimColor size="caption">  {r.span}</Text>
               </Text>
               <Text color={r.used >= HIGH_USED ? 'error' : 'claude'} weight="semibold" tabular>
-                {r.used}%<Text dimColor size="footnote" weight="regular"> used</Text>
+                {r.used}%<Text dimColor size="caption" weight="regular"> used</Text>
               </Text>
             </Box>
             {Svg ? (
-              <Svg source={barSvg(r.used)} alt={`${r.name}: ${r.used}% used`} height={8} />
+              <Svg source={barSvg(r.used, barPx)} alt={`${r.name}: ${r.used}% used`} width={barPx} height={6} />
             ) : (
               <Text>
                 <Text color={r.used >= HIGH_USED ? 'error' : 'claude'}>{textBar(r.used, barCells)[0]}</Text>
@@ -175,11 +156,6 @@ export const register: Register = on => {
             </Text>
           </Box>
         ))}
-        {(snap?.isStale || snap?.contextPercent !== undefined) && (
-          <Text dimColor size="caption">
-            {snap?.isStale ? 'Last known values · updates after the next reply' : `Context ${snap?.contextPercent}% full`}
-          </Text>
-        )}
       </Box>
     )
   })

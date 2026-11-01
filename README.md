@@ -15,9 +15,8 @@ Resets in 3 d 5 h
 - **Session**: your rolling 5-hour window, percent used and time until it resets
 - **Weekly**: your 7-day window, percent used and time until it resets
 - Bars are Claude orange and turn red past 85% used
-- Type `/usage-gauge` to bring the gauge back if you closed it
 
-Works in the **Claude Code VS Code extension** and in the **terminal CLI**.
+Shown right above the prompt box, in the **Claude Code VS Code extension** and in the **terminal CLI**.
 
 ## Install
 
