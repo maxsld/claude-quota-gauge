@@ -5,7 +5,7 @@
 **See how much of your Claude plan you've used, right above the prompt.**
 No more typing `/usage`, no more surprise "limit reached" in the middle of a task.
 
-[![Check](https://github.com/OWNER/claude-quota-gauge/actions/workflows/check.yml/badge.svg)](https://github.com/OWNER/claude-quota-gauge/actions/workflows/check.yml)
+[![Check](https://github.com/maxsld/claude-quota-gauge/actions/workflows/check.yml/badge.svg)](https://github.com/maxsld/claude-quota-gauge/actions/workflows/check.yml)
 ![Version](https://img.shields.io/badge/version-1.0.0-D97757)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-2.1.314%2B-D97757)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -28,12 +28,12 @@ No more typing `/usage`, no more surprise "limit reached" in the middle of a tas
 In Claude Code, type:
 
 ```
-/plugin install quota-gauge --marketplace OWNER/claude-quota-gauge
+/plugin install quota-gauge --marketplace maxsld/claude-quota-gauge
 ```
 
 Answer `y` to add the marketplace, then press Enter to install for your user. The gauge appears right away, and in every session after.
 
-In the VS Code extension, if `/plugin` isn't available: click **+** next to the prompt box, then **Plugins** → **Add marketplace** with `OWNER/claude-quota-gauge`, then **Add plugin**.
+In the VS Code extension, if `/plugin` isn't available: click **+** next to the prompt box, then **Plugins** → **Add marketplace** with `maxsld/claude-quota-gauge`, then **Add plugin**.
 
 ### Requirements
 
@@ -81,7 +81,7 @@ No. The plugin makes no network calls. The last reading is kept locally so the g
 ## Development
 
 ```bash
-git clone https://github.com/OWNER/claude-quota-gauge
+git clone https://github.com/maxsld/claude-quota-gauge
 cd claude-quota-gauge
 claude plugin validate .   # manifest and hooks
 claude plugin test .       # unit and render tests
@@ -92,7 +92,7 @@ The plugin is three small files: [hooks/gauge.ts](hooks/gauge.ts) (readings, ale
 
 ## En français
 
-**Quota Gauge** affiche ta consommation Claude (session de 5 h et semaine) juste au-dessus du champ de saisie de Claude Code, avec l'heure de réinitialisation et une alerte à 80 % et 95 %. Installation : tape `/plugin install quota-gauge --marketplace OWNER/claude-quota-gauge` dans Claude Code. Nécessite un abonnement Pro, Max ou Ultra.
+**Quota Gauge** affiche ta consommation Claude (session de 5 h et semaine) juste au-dessus du champ de saisie de Claude Code, avec l'heure de réinitialisation et une alerte à 80 % et 95 %. Installation : tape `/plugin install quota-gauge --marketplace maxsld/claude-quota-gauge` dans Claude Code. Nécessite un abonnement Pro, Max ou Ultra.
 
 ## License
 

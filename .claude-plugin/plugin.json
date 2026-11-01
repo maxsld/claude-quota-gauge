@@ -51,5 +51,7 @@
         "System"
       ]
     }
-  }
+  },
+  "homepage": "https://github.com/maxsld/claude-quota-gauge",
+  "repository": "https://github.com/maxsld/claude-quota-gauge"
 }
