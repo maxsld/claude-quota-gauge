@@ -25,15 +25,25 @@ No more typing `/usage`, no more surprise "limit reached" in the middle of a tas
 
 ## Install
 
-In Claude Code, type:
+Installs once for your user account, so the gauge is there in **every project**, existing and new.
+
+**From a terminal** (one line):
+
+```bash
+claude plugin install quota-gauge --marketplace maxsld/claude-quota-gauge --scope user
+```
+
+**Or inside Claude Code**, type:
 
 ```
 /plugin install quota-gauge --marketplace maxsld/claude-quota-gauge
 ```
 
-Answer `y` to add the marketplace, then press Enter to install for your user. The gauge appears right away, and in every session after.
+Answer `y` to add the marketplace, then keep the **User** scope (the default, press Enter) so it applies to all your projects.
 
-In the VS Code extension, if `/plugin` isn't available: click **+** next to the prompt box, then **Plugins** → **Add marketplace** with `maxsld/claude-quota-gauge`, then **Add plugin**.
+**In the VS Code extension**, if `/plugin` isn't available: click **+** next to the prompt box, then **Plugins** → **Add marketplace** with `maxsld/claude-quota-gauge`, then **Add plugin** and pick the **User** scope.
+
+The gauge appears right away. To get new versions: `/plugin update quota-gauge`.
 
 ### Requirements
 
@@ -92,7 +102,7 @@ The plugin is three small files: [hooks/gauge.ts](hooks/gauge.ts) (readings, ale
 
 ## En français
 
-**Quota Gauge** affiche ta consommation Claude (session de 5 h et semaine) juste au-dessus du champ de saisie de Claude Code, avec l'heure de réinitialisation et une alerte à 80 % et 95 %. Installation : tape `/plugin install quota-gauge --marketplace maxsld/claude-quota-gauge` dans Claude Code. Nécessite un abonnement Pro, Max ou Ultra.
+**Quota Gauge** affiche ta consommation Claude (session de 5 h et semaine) juste au-dessus du champ de saisie de Claude Code, avec l'heure de réinitialisation et une alerte à 80 % et 95 %. Installation, une seule fois pour tous tes projets : `claude plugin install quota-gauge --marketplace maxsld/claude-quota-gauge --scope user` dans un terminal, ou `/plugin install quota-gauge --marketplace maxsld/claude-quota-gauge` dans Claude Code (garde la portée **User**). Nécessite un abonnement Pro, Max ou Ultra.
 
 ## License
 
