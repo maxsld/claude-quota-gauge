@@ -134,7 +134,7 @@ export const register: Register = on => {
     const barCells = Math.max(6, Math.min(20, Math.floor(e.props.bodyColumns / 2) - 26))
 
     return (
-      <Box flexDirection="row" flexWrap="wrap" columnGap="xl" rowGap="xs" paddingX="sm">
+      <Box flexDirection="row" flexWrap="wrap" alignItems="center" columnGap="xl" rowGap="xs" paddingX="sm" paddingY="xs">
         {rows.map(r => (
           <Box key={r.name} flexDirection="row" alignItems="center" columnGap="sm">
             <Text dimColor size="caption">
