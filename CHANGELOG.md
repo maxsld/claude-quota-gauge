@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+
+- The bars show as soon as a session opens: usage is read from your account right away, no message needed
+- Both bars always stay visible; a window missing from an update keeps its last figure instead of disappearing
+- Usage is refreshed every 5 minutes while idle, so use from other devices shows up
+
 ## 1.0.1
 
 - Bars in solid Claude orange, no gradient

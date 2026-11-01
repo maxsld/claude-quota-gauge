@@ -12,7 +12,8 @@ export type Settings = {
 export type Reading = {
   kind: string
   name: string
-  used: number
+  // Undefined until a figure for the window has been read.
+  used?: number
   isHigh: boolean
   resetsAt?: number
 }
@@ -41,12 +42,39 @@ export function readings(rateLimits: readonly RateLimit[], at: number, settings:
   return WINDOWS.flatMap(({ kind, name }): Reading[] => {
     if (!settings.kinds.includes(kind)) return []
     const limit = rateLimits.find(l => l.kind === kind)
-    if (!limit) return []
+    // Every chosen bar always shows, empty until its figure is known.
+    if (!limit) return [{ kind, name, isHigh: false }]
     const resetsAt = limit.resetsAt ? Date.parse(limit.resetsAt) : undefined
     // A window whose reset time has passed starts over at zero.
     if (resetsAt !== undefined && resetsAt <= at) return [{ kind, name, used: 0, isHigh: false }]
     const used = Math.min(100, Math.round(limit.percentUsed))
     return [{ kind, name, used, isHigh: used >= settings.warnAt, resetsAt }]
+  })
+}
+
+// Newer readings replace older ones window by window; a window absent from the update keeps its last figure.
+export function merge(older: readonly RateLimit[], newer: readonly RateLimit[]): RateLimit[] {
+  const kinds = new Set(newer.map(l => l.kind))
+  return [...older.filter(l => !kinds.has(l.kind)), ...newer]
+}
+
+// The account's usage as /api/oauth/usage answers it: `{ five_hour: { utilization, resets_at }, ... }`, utilization in percent.
+export function parseUsage(body: unknown): RateLimit[] {
+  if (typeof body !== 'object' || body === null) return []
+  return WINDOWS.flatMap(({ kind }): RateLimit[] => {
+    const window = (body as Record<string, unknown>)[kind]
+    if (typeof window !== 'object' || window === null) return []
+    const { utilization, resets_at: resetsAt } = window as { utilization?: unknown; resets_at?: unknown }
+    if (typeof utilization !== 'number' || !Number.isFinite(utilization)) return []
+    const reset =
+      typeof resetsAt === 'string' ? Date.parse(resetsAt) : typeof resetsAt === 'number' ? resetsAt * 1000 : NaN
+    return [
+      {
+        kind,
+        percentUsed: Math.round(utilization * 10) / 10,
+        ...(Number.isNaN(reset) ? {} : { resetsAt: new Date(reset).toISOString() }),
+      },
+    ]
   })
 }
 

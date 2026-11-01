@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { dueAlerts, readings, settingsFrom } from '../hooks/gauge'
+import { dueAlerts, merge, parseUsage, readings, settingsFrom } from '../hooks/gauge'
 
 const HOUR = 3_600_000
 const AT = Date.parse('2026-11-01T12:00:00Z')
@@ -30,6 +30,40 @@ test('readings show percent used, high past the warning level', async () => {
     ['Session', 44, false],
     ['Weekly', 82, true],
   ])
+})
+
+test('a chosen window with no figure yet still has its bar', async () => {
+  const rows = readings([], AT, DEFAULTS)
+  expect(rows.map(r => [r.name, r.used])).toEqual([
+    ['Session', undefined],
+    ['Weekly', undefined],
+  ])
+})
+
+test('a window missing from an update keeps its last figure', async () => {
+  const older = [
+    { kind: 'five_hour', percentUsed: 40 },
+    { kind: 'seven_day', percentUsed: 7 },
+  ]
+  expect(merge(older, [{ kind: 'five_hour', percentUsed: 45 }])).toEqual([
+    { kind: 'seven_day', percentUsed: 7 },
+    { kind: 'five_hour', percentUsed: 45 },
+  ])
+})
+
+test('the usage endpoint answer is read as percent used', async () => {
+  expect(
+    parseUsage({
+      five_hour: { utilization: 44, resets_at: '2026-11-01T14:00:00.123+00:00' },
+      seven_day: { utilization: 7.25, resets_at: '2026-11-07T00:00:00Z' },
+      seven_day_opus: null,
+    }),
+  ).toEqual([
+    { kind: 'five_hour', percentUsed: 44, resetsAt: '2026-11-01T14:00:00.123Z' },
+    { kind: 'seven_day', percentUsed: 7.3, resetsAt: '2026-11-07T00:00:00.000Z' },
+  ])
+  expect(parseUsage({ five_hour: null, seven_day: { utilization: 'x' } })).toEqual([])
+  expect(parseUsage('nope')).toEqual([])
 })
 
 test('a window past its reset reads zero', async () => {

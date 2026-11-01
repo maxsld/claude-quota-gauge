@@ -6,7 +6,7 @@
 No more typing `/usage`, no more surprise "limit reached" in the middle of a task.
 
 [![Check](https://github.com/maxsld/claude-quota-gauge/actions/workflows/check.yml/badge.svg)](https://github.com/maxsld/claude-quota-gauge/actions/workflows/check.yml)
-![Version](https://img.shields.io/badge/version-1.0.1-D97757)
+![Version](https://img.shields.io/badge/version-1.1.0-D97757)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-2.1.314%2B-D97757)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -21,7 +21,8 @@ No more typing `/usage`, no more surprise "limit reached" in the middle of a tas
 - **Alerts.** A notification when a window reaches your warning level (80% by default) and again at 95%. Each alert fires once per window.
 - **Red when it matters.** Bars are Claude orange and turn red past your warning level.
 - **Works everywhere.** In the Claude Code VS Code extension and in the terminal.
-- **Zero overhead.** No extra network calls, no tokens, no credentials read. It uses the figures Claude Code already receives with each reply.
+- **Instant.** The bars are there as soon as you open Claude Code, no message needed.
+- **Light and private.** No tokens spent, and the plugin never sees your login: Claude Code makes the one request for it.
 
 ## Install
 
@@ -63,15 +64,15 @@ You can set these when you install, and change them any time in `/config` (the *
 
 ## How it works
 
-Claude Code reports your rate-limit windows with every reply from Claude. The plugin reads them through Claude Code's plugin API and draws them in the band above the prompt.
-
-- Before Claude's first reply in a new session, the last known values are shown, so the gauge is never empty for long.
-- The gauge refreshes every minute, even when you're idle, so a window that just reset drops back to 0%.
+- **When a session opens**, the plugin asks Anthropic for your account's usage, the same request `/usage` makes, so the bars fill in right away. It goes through Claude Code's own login (`$.session.authorize()`): the plugin never sees your token.
+- **After every reply**, Claude Code reports your usage with the response, and the bars follow it live.
+- **While you're idle**, usage is read again every 5 minutes, so use from another device or conversation shows up too, and a window that just reset drops back to 0%.
+- The last reading is kept locally, so the bars are filled even before the first request answers.
 
 ## FAQ
 
-**The gauge says "appear after Claude's first reply".**
-Claude Code only learns your usage when Claude answers. Send any message and the bars appear.
+**A bar shows `–%`.**
+Its figure hasn't been read yet, usually for a second while the session opens. If it stays, you're probably signed in with an API key rather than a Pro, Max or Ultra plan: usage windows only exist for subscriptions.
 
 **There's a small "From quota-gauge plugin" label above the bars.**
 Claude Code adds it to everything a plugin draws, so you always know what's showing what. Plugins can't remove it.
@@ -80,7 +81,7 @@ Claude Code adds it to everything a plugin draws, so you always know what's show
 No. The figures are for your whole Claude account, the same as `/usage`: every conversation, on every device.
 
 **Is my data sent anywhere?**
-No. The plugin makes no network calls. The last reading is kept locally so the gauge can show it when a new session starts.
+Nothing leaves your machine except one request to Anthropic's own API (`api.anthropic.com`), the same one `/usage` makes, every 5 minutes at most. It's sent by Claude Code with your existing login; the plugin never handles the token. Nothing is sent anywhere else.
 
 ## Uninstall
 

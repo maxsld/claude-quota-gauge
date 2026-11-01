@@ -2,10 +2,13 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { RateLimit } from '../types'
-import { dueAlerts, formatTime, readings, settingsFrom } from './gauge'
+import { dueAlerts, formatTime, merge, parseUsage, readings, settingsFrom } from './gauge'
 import type { Settings } from './gauge'
 
 const TICK_MS = 60_000
+// How often the account's usage is read while the session is idle, so use from elsewhere shows too.
+const FETCH_MS = 5 * 60_000
+const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
 // The last reading, kept across sessions so the gauge shows before the first reply.
 const STORE_KEY = 'lastRateLimits'
 // The highest threshold already alerted, per window instance (`kind@resetsAt`).
@@ -41,6 +44,36 @@ async function tick($: EngineInterface) {
   await update($, now, () => at)
 }
 
+// Reads the account's usage the way /usage does, through the session's own login; the token never reaches the plugin.
+async function fetchUsage($: EngineInterface): Promise<RateLimit[]> {
+  try {
+    const authorization = await $.session.authorize()
+    if (authorization?.kind !== 'bearer') return []
+    const response = await $.http.fetch(USAGE_URL, {
+      auth: authorization.handle,
+      headers: { 'anthropic-beta': 'oauth-2025-04-20' },
+    })
+    return response.ok ? parseUsage(JSON.parse(response.text)) : []
+  } catch {
+    return []
+  }
+}
+
+async function refresh($: EngineInterface, settings: Settings) {
+  const fetched = await fetchUsage($)
+  if (fetched.length === 0) return
+  await apply($, fetched, settings)
+}
+
+async function apply($: EngineInterface, rateLimits: readonly RateLimit[], settings: Settings) {
+  const snap = await read($, snapshot)
+  const merged = merge(snap?.rateLimits ?? [], rateLimits)
+  await update($, snapshot, () => ({ rateLimits: merged, isStale: false }))
+  await $.store.set(STORE_KEY, merged)
+  if (settings.alerts) await alert($, merged, settings)
+  await tick($)
+}
+
 async function alert($: EngineInterface, rateLimits: readonly RateLimit[], settings: Settings) {
   const at = await $.clock.now()
   const alerted = ((await $.store.get(ALERTED_KEY)) ?? {}) as Record<string, number>
@@ -49,7 +82,7 @@ async function alert($: EngineInterface, rateLimits: readonly RateLimit[], setti
   let isChanged = Object.keys(kept).length !== Object.keys(alerted).length
 
   for (const r of readings(rateLimits, at, settings)) {
-    if (r.resetsAt === undefined) continue
+    if (r.resetsAt === undefined || r.used === undefined) continue
     const key = `${r.kind}@${new Date(r.resetsAt).toISOString()}`
     const top = dueAlerts(r.used, kept[key] ?? 0, settings.warnAt).at(-1)
     if (top === undefined) continue
@@ -70,29 +103,24 @@ export const register: Register = (on, options) => {
     const result = await next(e)
     // Clears the plain status line an earlier version of this plugin set.
     $.ui.status(undefined)
+    // The last known figures first, so the bars show at once; fresh ones follow.
+    const saved = ((await $.store.get(STORE_KEY)) ?? []) as RateLimit[]
     const usage = await $.session.usage()
-    if (usage.rateLimits.length > 0) {
-      await update($, snapshot, () => ({ rateLimits: usage.rateLimits, isStale: false }))
-    } else {
-      const saved = (await $.store.get(STORE_KEY)) as RateLimit[] | undefined
-      await update($, snapshot, () => ({ rateLimits: saved ?? [], isStale: saved !== undefined }))
-    }
-
+    await update($, snapshot, () => ({
+      rateLimits: merge(saved, usage.rateLimits),
+      isStale: usage.rateLimits.length === 0,
+    }))
     await tick($)
+
+    $.clock.after(0, () => void refresh($, settings))
     $.clock.every(TICK_MS, () => void tick($))
+    $.clock.every(FETCH_MS, () => void refresh($, settings))
 
     return result
   })
 
   on('session.measure', async ($, e, next) => {
-    if (e.rateLimits.length > 0) {
-      await update($, snapshot, () => ({ rateLimits: e.rateLimits, isStale: false }))
-      if (e.changed.includes('rateLimits')) {
-        await $.store.set(STORE_KEY, e.rateLimits)
-        if (settings.alerts) await alert($, e.rateLimits, settings)
-      }
-    }
-    await tick($)
+    if (e.rateLimits.length > 0 && e.changed.includes('rateLimits')) await apply($, e.rateLimits, settings)
 
     return next(e)
   })
@@ -105,46 +133,52 @@ export const register: Register = (on, options) => {
     const Svg = 'Svg' in table ? table.Svg : undefined
     const snap = await read($, snapshot)
     const at = (await read($, now)) || (await $.clock.now())
-    const rows = snap ? readings(snap.rateLimits, at, settings) : []
-
-    if (rows.length === 0) {
-      return (
-        <Box paddingX="sm">
-          <Text dimColor size="caption">
-            Session and weekly usage appear after Claude's first reply.
-          </Text>
-        </Box>
-      )
-    }
+    const rows = readings(snap?.rateLimits ?? [], at, settings)
 
     const barPx = e.props.bodyColumns >= 90 ? 140 : 90
     const barCells = Math.max(6, Math.min(20, Math.floor(e.props.bodyColumns / 2) - 30))
 
     return (
-      <Box flexDirection="row" flexWrap="wrap" alignItems="center" columnGap="xl" rowGap="xs" paddingX="sm" paddingY="xs">
-        {rows.map(r => (
-          <Box key={r.name} flexDirection="row" alignItems="center" columnGap="sm">
-            <Text dimColor size="caption">
-              {r.name}
-            </Text>
-            {Svg ? (
-              <Svg source={barSvg(r.used, barPx, r.isHigh)} alt={`${r.name}: ${r.used}%`} width={barPx} height={5} />
-            ) : (
-              <Text>
-                <Text color={r.isHigh ? 'error' : 'claude'}>{textBar(r.used, barCells)[0]}</Text>
-                <Text dimColor>{textBar(r.used, barCells)[1]}</Text>
+      <Box
+        flexDirection="row"
+        flexWrap="wrap"
+        alignItems="center"
+        columnGap="xl"
+        rowGap="xs"
+        paddingX="sm"
+        paddingY="xs"
+      >
+        {rows.map(r => {
+          const used = r.used ?? 0
+          return (
+            <Box key={r.name} flexDirection="row" alignItems="center" columnGap="sm">
+              <Text dimColor size="caption">
+                {r.name}
               </Text>
-            )}
-            <Text size="caption" tabular>
-              {r.used}%
-            </Text>
-            {r.resetsAt !== undefined && (
-              <Text dimColor size="caption" tabular>
-                ↻ {formatTime(r.resetsAt, at, settings.hour12)}
+              {Svg ? (
+                <Svg
+                  source={barSvg(used, barPx, r.isHigh)}
+                  alt={`${r.name}: ${r.used ?? '–'}%`}
+                  width={barPx}
+                  height={5}
+                />
+              ) : (
+                <Text>
+                  <Text color={r.isHigh ? 'error' : 'claude'}>{textBar(used, barCells)[0]}</Text>
+                  <Text dimColor>{textBar(used, barCells)[1]}</Text>
+                </Text>
+              )}
+              <Text size="caption" tabular>
+                {r.used ?? '–'}%
               </Text>
-            )}
-          </Box>
-        ))}
+              {r.resetsAt !== undefined && (
+                <Text dimColor size="caption" tabular>
+                  ↻ {formatTime(r.resetsAt, at, settings.hour12)}
+                </Text>
+              )}
+            </Box>
+          )
+        })}
       </Box>
     )
   })

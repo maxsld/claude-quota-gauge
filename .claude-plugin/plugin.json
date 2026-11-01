@@ -1,6 +1,6 @@
 {
   "name": "quota-gauge",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "See your Claude plan usage at a glance: 5-hour session and weekly bars right above the prompt, with reset times and alerts.",
   "author": {
     "name": "Maxens Soldan"
