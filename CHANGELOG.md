@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Bars in solid Claude orange, no gradient
+
 ## 1.0.0
 
 - Session (5-hour) and weekly usage bars right above the prompt, in VS Code and the terminal

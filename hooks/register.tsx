@@ -11,23 +11,22 @@ const STORE_KEY = 'lastRateLimits'
 // The highest threshold already alerted, per window instance (`kind@resetsAt`).
 const ALERTED_KEY = 'alerted'
 
-// Claude's orange, and Apple's system red for a window nearly used up.
-const ORANGE = ['#F0A07E', '#D97757']
-const RED = ['#FF7A70', '#E5484D']
+// Claude's orange, and red for a window nearly used up.
+const ORANGE = '#D97757'
+const RED = '#E5484D'
 
 const snapshot = atom({ plugin: 'quota-gauge', key: 'snapshot' } as const, null)
 // Bumped every minute so a window that just reset redraws while the session is idle.
 const now = atom({ plugin: 'quota-gauge', key: 'now' } as const, 0)
 
 function barSvg(used: number, w: number, isHigh: boolean): string {
-  const [from, to] = isHigh ? RED : ORANGE
+  const color = isHigh ? RED : ORANGE
   const h = 5
   const fill = used > 0 ? Math.max(h, (used / 100) * w) : 0
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
-    `<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs>` +
     `<rect width="${w}" height="${h}" rx="${h / 2}" fill="#8E8E93" fill-opacity="0.22"/>` +
-    (fill > 0 ? `<rect width="${fill}" height="${h}" rx="${h / 2}" fill="url(#g)"/>` : '') +
+    (fill > 0 ? `<rect width="${fill}" height="${h}" rx="${h / 2}" fill="${color}"/>` : '') +
     `</svg>`
   )
 }
