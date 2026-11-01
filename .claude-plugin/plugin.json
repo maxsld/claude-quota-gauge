@@ -1,0 +1,7 @@
+{
+  "name": "quota-gauge",
+  "version": "0.1.0",
+  "description": "Shows your 5-hour and 7-day Claude plan usage (percent left and time to reset) under the prompt, in VS Code and the terminal.",
+  "author": { "name": "Maxens Soldan" },
+  "license": "MIT"
+}

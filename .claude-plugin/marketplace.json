@@ -1,0 +1,13 @@
+{
+  "name": "quota-gauge",
+  "description": "5-hour and 7-day Claude plan usage gauge for Claude Code.",
+  "owner": {
+    "name": "Maxens Soldan"
+  },
+  "plugins": [
+    {
+      "name": "quota-gauge",
+      "source": "./"
+    }
+  ]
+}
