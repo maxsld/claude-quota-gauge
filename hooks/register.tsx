@@ -1,55 +1,26 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { RateLimit, Snapshot } from '../types'
+import type { RateLimit } from '../types'
+import { dueAlerts, formatTime, readings, settingsFrom } from './gauge'
+import type { Settings } from './gauge'
 
 const TICK_MS = 60_000
 // The last reading, kept across sessions so the gauge shows before the first reply.
 const STORE_KEY = 'lastRateLimits'
+// The highest threshold already alerted, per window instance (`kind@resetsAt`).
+const ALERTED_KEY = 'alerted'
 
 // Claude's orange, and Apple's system red for a window nearly used up.
 const ORANGE = ['#F0A07E', '#D97757']
 const RED = ['#FF7A70', '#E5484D']
-const HIGH_USED = 85
-
-const WINDOWS = [
-  { kind: 'five_hour', name: 'Session' },
-  { kind: 'seven_day', name: 'Weekly' },
-]
 
 const snapshot = atom({ plugin: 'quota-gauge', key: 'snapshot' } as const, null)
-// Bumped every minute so a window that just reset redraws while the session is idle.
+// Bumped every minute so resets and the pace redraw while the session is idle.
 const now = atom({ plugin: 'quota-gauge', key: 'now' } as const, 0)
 
-type Reading = { name: string; used: number; resets: string }
-
-function readings(snap: Snapshot, at: number): Reading[] {
-  return WINDOWS.flatMap(({ kind, name }) => {
-    const limit = snap.rateLimits.find(l => l.kind === kind)
-    if (!limit) return []
-    const resetAt = limit.resetsAt ? Date.parse(limit.resetsAt) : NaN
-    // A window whose reset time has passed starts over at zero.
-    if (resetAt <= at) return [{ name, used: 0, resets: '' }]
-    const used = Math.min(100, Math.round(limit.percentUsed))
-    return [{ name, used, resets: Number.isNaN(resetAt) ? '' : resetDate(resetAt, at) }]
-  })
-}
-
-// "20:00" when the reset is today, else "7 Nov, 20:00", in the person's locale.
-function resetDate(resetAt: number, at: number): string {
-  const date = new Date(resetAt)
-  const isToday = date.toDateString() === new Date(at).toDateString()
-  const time: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
-  try {
-    return new Intl.DateTimeFormat(undefined, isToday ? time : { ...time, day: 'numeric', month: 'short' }).format(date)
-  } catch {
-    const hm = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-    return isToday ? hm : `${date.getDate()}/${date.getMonth() + 1} ${hm}`
-  }
-}
-
-function barSvg(used: number, w: number): string {
-  const [from, to] = used >= HIGH_USED ? RED : ORANGE
+function barSvg(used: number, w: number, isHigh: boolean): string {
+  const [from, to] = isHigh ? RED : ORANGE
   const h = 5
   const fill = used > 0 ? Math.max(h, (used / 100) * w) : 0
   return (
@@ -71,18 +42,38 @@ async function tick($: EngineInterface) {
   await update($, now, () => at)
 }
 
-export const register: Register = on => {
+async function alert($: EngineInterface, rateLimits: readonly RateLimit[], settings: Settings) {
+  const at = await $.clock.now()
+  const alerted = ((await $.store.get(ALERTED_KEY)) ?? {}) as Record<string, number>
+  // Forgets windows that have reset since.
+  const kept = Object.fromEntries(Object.entries(alerted).filter(([key]) => Date.parse(key.split('@')[1] ?? '') > at))
+  let isChanged = Object.keys(kept).length !== Object.keys(alerted).length
+
+  for (const r of readings(rateLimits, at, settings)) {
+    if (r.resetsAt === undefined) continue
+    const key = `${r.kind}@${new Date(r.resetsAt).toISOString()}`
+    const top = dueAlerts(r.used, kept[key] ?? 0, settings.warnAt).at(-1)
+    if (top === undefined) continue
+    kept[key] = top
+    isChanged = true
+    const text = `${r.name} usage at ${r.used}% · resets ${formatTime(r.resetsAt, at, settings.hour12)}`
+    const sent = await $.ui.notify(text, { title: 'Claude usage' })
+    if (!sent.isSent) $.ui.toast(text, { timeoutMs: 8000 })
+  }
+
+  if (isChanged) await $.store.set(ALERTED_KEY, kept)
+}
+
+export const register: Register = (on, options) => {
+  const settings = settingsFrom(options)
+
   on('session.start', async ($, e, next) => {
     const result = await next(e)
     // Clears the plain status line an earlier version of this plugin set.
     $.ui.status(undefined)
     const usage = await $.session.usage()
     if (usage.rateLimits.length > 0) {
-      await update($, snapshot, () => ({
-        rateLimits: usage.rateLimits,
-        contextPercent: usage.context.percent,
-        isStale: false,
-      }))
+      await update($, snapshot, () => ({ rateLimits: usage.rateLimits, isStale: false }))
     } else {
       const saved = (await $.store.get(STORE_KEY)) as RateLimit[] | undefined
       await update($, snapshot, () => ({ rateLimits: saved ?? [], isStale: saved !== undefined }))
@@ -96,14 +87,11 @@ export const register: Register = on => {
 
   on('session.measure', async ($, e, next) => {
     if (e.rateLimits.length > 0) {
-      await update($, snapshot, () => ({
-        rateLimits: e.rateLimits,
-        contextPercent: e.context.percent,
-        isStale: false,
-      }))
-      if (e.changed.includes('rateLimits')) await $.store.set(STORE_KEY, e.rateLimits)
-    } else {
-      await update($, snapshot, snap => (snap ? { ...snap, contextPercent: e.context.percent } : snap))
+      await update($, snapshot, () => ({ rateLimits: e.rateLimits, isStale: false }))
+      if (e.changed.includes('rateLimits')) {
+        await $.store.set(STORE_KEY, e.rateLimits)
+        if (settings.alerts) await alert($, e.rateLimits, settings)
+      }
     }
     await tick($)
 
@@ -118,7 +106,7 @@ export const register: Register = on => {
     const Svg = 'Svg' in table ? table.Svg : undefined
     const snap = await read($, snapshot)
     const at = (await read($, now)) || (await $.clock.now())
-    const rows = snap ? readings(snap, at) : []
+    const rows = snap ? readings(snap.rateLimits, at, settings) : []
 
     if (rows.length === 0) {
       return (
@@ -131,7 +119,7 @@ export const register: Register = on => {
     }
 
     const barPx = e.props.bodyColumns >= 90 ? 140 : 90
-    const barCells = Math.max(6, Math.min(20, Math.floor(e.props.bodyColumns / 2) - 26))
+    const barCells = Math.max(6, Math.min(20, Math.floor(e.props.bodyColumns / 2) - 30))
 
     return (
       <Box flexDirection="row" flexWrap="wrap" alignItems="center" columnGap="xl" rowGap="xs" paddingX="sm" paddingY="xs">
@@ -141,19 +129,24 @@ export const register: Register = on => {
               {r.name}
             </Text>
             {Svg ? (
-              <Svg source={barSvg(r.used, barPx)} alt={`${r.name}: ${r.used}%`} width={barPx} height={5} />
+              <Svg source={barSvg(r.used, barPx, r.isHigh)} alt={`${r.name}: ${r.used}%`} width={barPx} height={5} />
             ) : (
               <Text>
-                <Text color={r.used >= HIGH_USED ? 'error' : 'claude'}>{textBar(r.used, barCells)[0]}</Text>
+                <Text color={r.isHigh ? 'error' : 'claude'}>{textBar(r.used, barCells)[0]}</Text>
                 <Text dimColor>{textBar(r.used, barCells)[1]}</Text>
               </Text>
             )}
             <Text size="caption" tabular>
               {r.used}%
             </Text>
-            {r.resets !== '' && (
+            {r.fullAt !== undefined && (
+              <Text color="warning" size="caption" tabular>
+                ⚠ full ~{formatTime(r.fullAt, at, settings.hour12)}
+              </Text>
+            )}
+            {r.resetsAt !== undefined && (
               <Text dimColor size="caption" tabular>
-                ↻ {r.resets}
+                ↻ {formatTime(r.resetsAt, at, settings.hour12)}
               </Text>
             )}
           </Box>

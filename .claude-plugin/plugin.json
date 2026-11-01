@@ -1,10 +1,45 @@
 {
   "name": "quota-gauge",
-  "version": "0.2.0",
-  "description": "Shows your 5-hour and 7-day Claude plan usage (percent left and time to reset) under the prompt, in VS Code and the terminal.",
-  "author": {
-    "name": "Maxens Soldan"
-  },
+  "version": "1.0.0",
+  "description": "See your Claude plan usage at a glance: 5-hour session and weekly bars right above the prompt, with reset times, pace and alerts.",
+  "author": { "name": "Maxens Soldan" },
   "license": "MIT",
-  "types": "./types/index.d.ts"
+  "keywords": ["usage", "quota", "rate-limit", "status", "vscode"],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "show": {
+      "type": "string",
+      "title": "Bars to show",
+      "description": "Which usage windows appear above the prompt.",
+      "default": "Session and weekly",
+      "options": ["Session and weekly", "Session only", "Weekly only"]
+    },
+    "warnAt": {
+      "type": "number",
+      "title": "Warning level (%)",
+      "description": "Bars turn red and the first alert fires at this usage. A last alert always fires at 95%.",
+      "default": 80,
+      "min": 50,
+      "max": 99
+    },
+    "alerts": {
+      "type": "boolean",
+      "title": "Usage alerts",
+      "description": "Notify me when a window reaches the warning level, and again at 95%.",
+      "default": true
+    },
+    "pace": {
+      "type": "boolean",
+      "title": "Usage pace",
+      "description": "Show when you'd hit the limit at your current rate, if that comes before the reset.",
+      "default": true
+    },
+    "timeFormat": {
+      "type": "string",
+      "title": "Time format",
+      "description": "How reset and pace times are written.",
+      "default": "System",
+      "options": ["System", "24-hour", "12-hour"]
+    }
+  }
 }

@@ -1,0 +1,88 @@
+import type { PluginOptions } from 'claude-code'
+
+import type { RateLimit } from '../types'
+
+export type Settings = {
+  kinds: string[]
+  alerts: boolean
+  warnAt: number
+  pace: boolean
+  hour12: boolean | undefined
+}
+
+export type Reading = {
+  kind: string
+  name: string
+  used: number
+  isHigh: boolean
+  // When the window resets, and when it would run out at the current rate if that comes first.
+  resetsAt?: number
+  fullAt?: number
+}
+
+const WINDOWS = [
+  { kind: 'five_hour', name: 'Session', ms: 5 * 3_600_000 },
+  { kind: 'seven_day', name: 'Weekly', ms: 7 * 86_400_000 },
+]
+
+// Pace is only projected once a window has some history, so a single early burst doesn't cry wolf.
+const PACE_MIN_USED = 10
+const PACE_MIN_ELAPSED = 0.05
+
+export const LAST_ALERT = 95
+
+export function settingsFrom(options: PluginOptions): Settings {
+  const show = String(options.show ?? 'Session and weekly')
+  const warnAt = Number(options.warnAt ?? 80)
+  const timeFormat = String(options.timeFormat ?? 'System')
+  return {
+    kinds:
+      show === 'Session only' ? ['five_hour'] : show === 'Weekly only' ? ['seven_day'] : ['five_hour', 'seven_day'],
+    alerts: options.alerts !== false,
+    warnAt: Number.isFinite(warnAt) ? Math.min(99, Math.max(1, warnAt)) : 80,
+    pace: options.pace !== false,
+    hour12: timeFormat === '12-hour' ? true : timeFormat === '24-hour' ? false : undefined,
+  }
+}
+
+export function readings(rateLimits: readonly RateLimit[], at: number, settings: Settings): Reading[] {
+  return WINDOWS.flatMap(({ kind, name, ms }): Reading[] => {
+    if (!settings.kinds.includes(kind)) return []
+    const limit = rateLimits.find(l => l.kind === kind)
+    if (!limit) return []
+    const resetsAt = limit.resetsAt ? Date.parse(limit.resetsAt) : undefined
+    // A window whose reset time has passed starts over at zero.
+    if (resetsAt !== undefined && resetsAt <= at) return [{ kind, name, used: 0, isHigh: false }]
+    const used = Math.min(100, Math.round(limit.percentUsed))
+    const fullAt = settings.pace && resetsAt !== undefined ? projectFull(limit.percentUsed, at, resetsAt, ms) : undefined
+    return [{ kind, name, used, isHigh: used >= settings.warnAt, resetsAt, fullAt }]
+  })
+}
+
+// When the window runs out if usage keeps its average rate since the window opened; only if before the reset.
+export function projectFull(percentUsed: number, at: number, resetsAt: number, windowMs: number): number | undefined {
+  const elapsed = at - (resetsAt - windowMs)
+  if (percentUsed < PACE_MIN_USED || percentUsed >= 100 || elapsed < windowMs * PACE_MIN_ELAPSED) return undefined
+  const fullAt = at + ((100 - percentUsed) * elapsed) / percentUsed
+  return fullAt < resetsAt ? fullAt : undefined
+}
+
+// The thresholds a window has crossed that were not alerted yet, highest last.
+export function dueAlerts(used: number, alreadyAlerted: number, warnAt: number): number[] {
+  return [...new Set([warnAt, LAST_ALERT])]
+    .sort((a, b) => a - b)
+    .filter(t => used >= t && t > alreadyAlerted)
+}
+
+// "20:00" when the moment is today, else "7 Nov, 20:00", in the person's locale.
+export function formatTime(when: number, at: number, hour12: boolean | undefined): string {
+  const date = new Date(when)
+  const isToday = date.toDateString() === new Date(at).toDateString()
+  const time: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12 }
+  try {
+    return new Intl.DateTimeFormat(undefined, isToday ? time : { ...time, day: 'numeric', month: 'short' }).format(date)
+  } catch {
+    const hm = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    return isToday ? hm : `${date.getDate()}/${date.getMonth() + 1} ${hm}`
+  }
+}
