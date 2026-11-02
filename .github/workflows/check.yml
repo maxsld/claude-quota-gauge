@@ -21,3 +21,5 @@ jobs:
         run: claude plugin test .
       - name: Test the Codex setup script
         run: node --test codex/setup.test.cjs
+      - name: Test the browser extension logic
+        run: node --test browser/gauge.test.cjs

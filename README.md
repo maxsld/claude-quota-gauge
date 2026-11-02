@@ -63,10 +63,23 @@ It adds `five-hour-limit` and `weekly-limit` to `[tui] status_line` in `~/.codex
 
 Codex limits: the figures appear after your first message (they come with the reply), the footer shows percent **left**, and reset times are only in `/status`. No alerts.
 
-## Claude app and ChatGPT
+## claude.ai in your browser
 
-- **Claude desktop app, Code tab:** the plugin above works there as is.
-- **Claude chat (web, desktop, mobile) and ChatGPT:** not possible. Neither lets a plugin or extension draw anything around the prompt, and neither exposes plan usage to apps or connectors. For Claude, use the built-in **Settings → Usage** page. For Codex, use `/status`.
+The same gauge, right above the prompt on **claude.ai**, as a browser extension for Chrome, Edge, Brave or Arc. It reads your usage the way claude.ai's own **Settings → Usage** page does, with your existing session: no login, no token handled, nothing sent anywhere but claude.ai.
+
+1. [Download the repository as a ZIP](https://github.com/maxsld/claude-quota-gauge/archive/refs/heads/main.zip) and unzip it.
+2. Open `chrome://extensions` (or `edge://extensions`), turn on **Developer mode**.
+3. **Load unpacked** → pick the `browser` folder.
+
+Open claude.ai: Session and Weekly bars sit above the prompt box, refreshed every minute and a few seconds after each message, with an alert at 80% and 95%. If claude.ai changes its layout and the prompt box can't be found, the gauge moves to a small pill in the bottom-right corner instead of disappearing.
+
+It relies on claude.ai's internal usage endpoint, which is not a public API: if Anthropic changes it, the bars stay on their last figures until the extension is updated.
+
+## Claude desktop app and ChatGPT
+
+- **Claude desktop app, Code tab:** the Claude Code plugin above works there as is.
+- **Claude desktop app, chat:** no extension can draw there. The app is signed, and its only extensions are MCP servers, which can only answer inside a reply. Use claude.ai in your browser with the extension above, or **Settings → Usage**.
+- **ChatGPT:** not possible. ChatGPT apps only show inside the conversation and can't read your plan's usage. For Codex, see above or use `/status`.
 
 ## Settings
 
@@ -120,7 +133,7 @@ The plugin is three small files: [hooks/gauge.ts](hooks/gauge.ts) (readings, ale
 
 ## En français
 
-**Quota Gauge** affiche ta consommation Claude (session de 5 h et semaine) juste au-dessus du champ de saisie de Claude Code, avec l'heure de réinitialisation et une alerte à 80 % et 95 %. Installation, une seule fois pour tous tes projets : `claude plugin install quota-gauge --marketplace maxsld/claude-quota-gauge --scope user` dans un terminal, ou `/plugin install quota-gauge --marketplace maxsld/claude-quota-gauge` dans Claude Code (garde la portée **User**). Nécessite un abonnement Pro, Max ou Ultra. Pour Codex CLI, voir la section [Codex CLI](#codex-cli) : une commande active les limites 5 h et semaine natives de Codex dans son pied de page. Dans le chat Claude (web, app) et dans ChatGPT, impossible : aucune extension ne peut afficher quoi que ce soit autour du champ de saisie.
+**Quota Gauge** affiche ta consommation Claude (session de 5 h et semaine) juste au-dessus du champ de saisie de Claude Code, avec l'heure de réinitialisation et une alerte à 80 % et 95 %. Installation, une seule fois pour tous tes projets : `claude plugin install quota-gauge --marketplace maxsld/claude-quota-gauge --scope user` dans un terminal, ou `/plugin install quota-gauge --marketplace maxsld/claude-quota-gauge` dans Claude Code (garde la portée **User**). Nécessite un abonnement Pro, Max ou Ultra. Pour Codex CLI, voir la section [Codex CLI](#codex-cli) : une commande active les limites 5 h et semaine natives de Codex dans son pied de page. Pour claude.ai dans le navigateur (Chrome, Edge, Brave, Arc), une extension affiche la même jauge au-dessus du champ de saisie : voir [claude.ai in your browser](#claudeai-in-your-browser). Dans le chat de l'app desktop Claude et dans ChatGPT, impossible : aucune extension ne peut y afficher quoi que ce soit autour du champ de saisie.
 
 ## License
 
