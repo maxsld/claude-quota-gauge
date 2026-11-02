@@ -19,3 +19,5 @@ jobs:
         run: claude plugin validate .
       - name: Run the tests
         run: claude plugin test .
+      - name: Test the Codex setup script
+        run: node --test codex/setup.test.cjs

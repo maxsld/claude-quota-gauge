@@ -20,7 +20,7 @@ No more typing `/usage`, no more surprise "limit reached" in the middle of a tas
 - **Reset times.** `↻ 20:00` when it resets today, `↻ 7 Nov, 01:00` otherwise, in your own locale.
 - **Alerts.** A notification when a window reaches your warning level (80% by default) and again at 95%. Each alert fires once per window.
 - **Red when it matters.** Bars are Claude orange and turn red past your warning level.
-- **Works everywhere.** In the Claude Code VS Code extension and in the terminal.
+- **Works everywhere.** In the Claude Code VS Code extension, the terminal, and the **Code** tab of the Claude desktop app.
 - **Instant.** The bars are there as soon as you open Claude Code, no message needed.
 - **Light and private.** No tokens spent, and the plugin never sees your login: Claude Code makes the one request for it.
 
@@ -50,6 +50,23 @@ The gauge appears right away. To get new versions: `/plugin update quota-gauge`.
 
 - **Claude Code 2.1.314** or newer (VS Code extension or CLI)
 - A **claude.ai Pro, Max or Ultra** subscription. Usage windows only exist for subscription plans: with an API key there is nothing to show.
+
+## Codex CLI
+
+Codex has no plugin UI to draw bars with, but its footer can show your ChatGPT plan's 5-hour and weekly limits natively (`5h 88% left · weekly 98% left`). One command turns them on:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/maxsld/claude-quota-gauge/main/codex/setup.cjs | node
+```
+
+It adds `five-hour-limit` and `weekly-limit` to `[tui] status_line` in `~/.codex/config.toml` (or `$CODEX_HOME`), keeps your other items and settings, saves a `config.toml.bak`, and does nothing if they're already there. Prefer doing it by hand? Type `/statusline` in Codex and tick the same two items.
+
+Codex limits: the figures appear after your first message (they come with the reply), the footer shows percent **left**, and reset times are only in `/status`. No alerts.
+
+## Claude app and ChatGPT
+
+- **Claude desktop app, Code tab:** the plugin above works there as is.
+- **Claude chat (web, desktop, mobile) and ChatGPT:** not possible. Neither lets a plugin or extension draw anything around the prompt, and neither exposes plan usage to apps or connectors. For Claude, use the built-in **Settings → Usage** page. For Codex, use `/status`.
 
 ## Settings
 
@@ -103,7 +120,7 @@ The plugin is three small files: [hooks/gauge.ts](hooks/gauge.ts) (readings, ale
 
 ## En français
 
-**Quota Gauge** affiche ta consommation Claude (session de 5 h et semaine) juste au-dessus du champ de saisie de Claude Code, avec l'heure de réinitialisation et une alerte à 80 % et 95 %. Installation, une seule fois pour tous tes projets : `claude plugin install quota-gauge --marketplace maxsld/claude-quota-gauge --scope user` dans un terminal, ou `/plugin install quota-gauge --marketplace maxsld/claude-quota-gauge` dans Claude Code (garde la portée **User**). Nécessite un abonnement Pro, Max ou Ultra.
+**Quota Gauge** affiche ta consommation Claude (session de 5 h et semaine) juste au-dessus du champ de saisie de Claude Code, avec l'heure de réinitialisation et une alerte à 80 % et 95 %. Installation, une seule fois pour tous tes projets : `claude plugin install quota-gauge --marketplace maxsld/claude-quota-gauge --scope user` dans un terminal, ou `/plugin install quota-gauge --marketplace maxsld/claude-quota-gauge` dans Claude Code (garde la portée **User**). Nécessite un abonnement Pro, Max ou Ultra. Pour Codex CLI, voir la section [Codex CLI](#codex-cli) : une commande active les limites 5 h et semaine natives de Codex dans son pied de page. Dans le chat Claude (web, app) et dans ChatGPT, impossible : aucune extension ne peut afficher quoi que ce soit autour du champ de saisie.
 
 ## License
 
